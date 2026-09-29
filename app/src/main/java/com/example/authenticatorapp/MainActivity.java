@@ -73,6 +73,14 @@ public class MainActivity extends AppCompatActivity {
         }
         try {
             String account = accountInput.getText().toString().trim();
+            if (!TotpGenerator.isValidSecret(secret)) {
+                secretInput.setError("Enter a valid Base32 TOTP secret");
+                return;
+            }
+            if (account.indexOf(0) >= 0 || account.indexOf(10) >= 0 || account.indexOf(13) >= 0) {
+                accountInput.setError("Account name contains unsupported characters");
+                return;
+            }
             TotpGenerator.generate(secret, System.currentTimeMillis());
             SecureStorage.save(this, account, secret);
             activeSecret = secret;

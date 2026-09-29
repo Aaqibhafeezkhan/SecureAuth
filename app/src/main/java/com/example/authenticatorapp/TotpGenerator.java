@@ -25,6 +25,14 @@ public final class TotpGenerator {
         return String.format(java.util.Locale.US, "%06d", binary % 1_000_000);
     }
 
+    public static boolean isValidSecret(String value) {
+        try {
+            return decodeBase32(value).length >= 10;
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+    }
+
     private static byte[] decodeBase32(String value) {
         String normalized = value.replaceAll("[\\s-]", "").replace("=", "").toUpperCase(java.util.Locale.US);
         if (normalized.isEmpty()) throw new IllegalArgumentException("Secret is required");
