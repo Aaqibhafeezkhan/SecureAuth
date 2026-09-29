@@ -39,6 +39,10 @@ For a distributable build:
 
 Never commit a keystore, passwords, signing properties, or real TOTP secrets.
 
+## Credential security
+
+TOTP secrets are validated before they are persisted. Account labels reject line-break control characters. SecureAuth does not hash passwords because the current application has no password account store; Login/Register remain UI shells rather than a server-side authentication system.
+
 ## Security notes
 
 SecureAuth is still a personal/open-source project and should be reviewed before being trusted with critical accounts. Android Keystore protects the stored secret on supported devices, but the app does not provide cloud backup or recovery of TOTP secrets. Keep account recovery codes separately.
