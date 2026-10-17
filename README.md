@@ -43,6 +43,10 @@ Never commit a keystore, passwords, signing properties, or real TOTP secrets.
 
 TOTP secrets are validated before they are persisted. Account labels reject line-break control characters. SecureAuth does not hash passwords because the current application has no password account store; Login/Register remain UI shells rather than a server-side authentication system.
 
+## Local credential lifecycle
+
+Deleting the saved TOTP account synchronously clears its encrypted preferences and removes the app-owned Android Keystore key used to encrypt it. If either cleanup step fails, the app reports that deletion could not be fully completed instead of showing a success message. This is local credential invalidation, not server-side session or token revocation.
+
 ## Security notes
 
 SecureAuth is still a personal/open-source project and should be reviewed before being trusted with critical accounts. Android Keystore protects the stored secret on supported devices, but the app does not provide cloud backup or recovery of TOTP secrets. Keep account recovery codes separately.

@@ -94,14 +94,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void deleteAccount() {
-        SecureStorage.clear(this);
         activeSecret = null;
         accountInput.setText("");
         secretInput.setText("");
         accountLabel.setText("No account configured");
         codeView.setText("------");
         timerView.setText("Add an account to begin");
-        Toast.makeText(this, "Saved account deleted", Toast.LENGTH_SHORT).show();
+        try {
+            SecureStorage.clear(this);
+            Toast.makeText(this, "Saved account deleted", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not fully delete saved account. Please retry.", Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override protected void onDestroy() {

@@ -12,7 +12,6 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 
-/** Stores the active TOTP secret encrypted with an Android Keystore-backed AES key. */
 public final class SecureStorage {
     private static final String KEYSTORE = "AndroidKeyStore";
     private static final String KEY_ALIAS = "secureauth_totp_key";
@@ -44,11 +43,14 @@ public final class SecureStorage {
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, getKey(), new GCMParameterSpec(128, iv));
         byte[] encrypted = cipher.doFinal(secret.getBytes(StandardCharsets.UTF_8));
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        boolean saved = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putString(SECRET, Base64.encodeToString(encrypted, Base64.NO_WRAP))
                 .putString(ACCOUNT, account)
                 .putString(IV, Base64.encodeToString(iv, Base64.NO_WRAP))
-                .apply();
+                .commit();
+        if (!saved) {
+            throw new IllegalStateException("Could not persist encrypted account");
+        }
     }
 
     public static String loadSecret(Context context) throws Exception {
@@ -65,7 +67,15 @@ public final class SecureStorage {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(ACCOUNT, "");
     }
 
-    public static void clear(Context context) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply();
+    public static void clear(Context context) throws Exception {
+        boolean cleared = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit();
+        if (!cleared) {
+            throw new IllegalStateException("Could not clear encrypted account data");
+        }
+        KeyStore keyStore = KeyStore.getInstance(KEYSTORE);
+        keyStore.load(null);
+        if (keyStore.containsAlias(KEY_ALIAS)) {
+            keyStore.deleteEntry(KEY_ALIAS);
+        }
     }
 }
