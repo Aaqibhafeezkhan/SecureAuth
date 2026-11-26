@@ -21,18 +21,18 @@ SecureAuth stores one TOTP account locally and generates codes on the device. Th
 
 | Asset or threat | Control | Where implemented | How verified |
 | --- | --- | --- | --- |
-| TOTP secret at rest | AES-GCM with a 256-bit Android Keystore key and a fresh provider-generated IV | SecureStorage | SecureStorageLifecycleTest; manual review |
-| Ciphertext modification | GCM authentication tag checked during decryption | SecureStorage.loadSecret | SecureStorageLifecycleTest.tamperedCiphertextFailsAuthentication |
+| TOTP secret at rest | AES-GCM with a 256-bit Android Keystore key and a fresh provider-generated IV | SecureStorage.java, SecureStorage | SecureStorageLifecycleTest; manual review |
+| Ciphertext modification | GCM authentication tag checked during decryption | SecureStorage.java, SecureStorage.loadSecret | SecureStorageLifecycleTest.tamperedCiphertextFailsAuthentication |
 | Secret exposed through backup | Android backup disabled | AndroidManifest.xml | Manual review |
-| Codes captured in screenshots or recents | FLAG_SECURE in non-debuggable builds | MainActivity | Manual review |
-| Unnecessary background refresh | Refresh loop runs only while the activity is started | MainActivity.onStart/onStop | Manual review |
-| Invalid TOTP input | Base32 validation, minimum decoded secret length, and null handling | TotpGenerator | TotpGeneratorTest, TotpSecretValidationTest |
-| Unsafe account labels | Optional label, 64-character trimmed limit, ISO control-character rejection | CredentialValidator | CredentialValidatorTest |
-| Credential deletion | Synchronous preference clearing and Keystore key deletion | SecureStorage.clear | SecureStorageLifecycleTest |
+| Codes captured in screenshots or recents | FLAG_SECURE in non-debuggable builds | MainActivity.java, MainActivity | Manual review |
+| Unnecessary background refresh | Refresh loop runs only while the activity is started | MainActivity.java, MainActivity.onStart/onStop | Manual review |
+| Invalid TOTP input | Base32 validation, minimum decoded secret length, and null handling | TotpGenerator.java, TotpGenerator | TotpGeneratorTest, TotpSecretValidationTest |
+| Unsafe account labels | Optional label, 64-character trimmed limit, ISO control-character rejection | CredentialValidator.java, CredentialValidator | CredentialValidatorTest |
+| Credential deletion | Synchronous preference clearing and Keystore key deletion | SecureStorage.java, SecureStorage.clear | SecureStorageLifecycleTest |
 
 ## How it works
 
-\`\`\`mermaid
+~~~mermaid
 flowchart TD
     A[Enter optional account label and Base32 secret] --> B[Validate label and secret]
     B --> C[Encrypt secret with Android Keystore AES-GCM]
@@ -41,7 +41,7 @@ flowchart TD
     E --> F[Generate and refresh six-digit TOTP code locally]
     F --> G[Delete account]
     G --> H[Clear preferences and delete Keystore key]
-\`\`\`
+~~~
 
 ## Build and test
 
@@ -49,21 +49,21 @@ The wrapper uses Gradle 6.5 and the top-level build uses Android Gradle Plugin 4
 
 Run JVM unit tests:
 
-\`\`\`sh
+~~~sh
 ./gradlew testDebugUnitTest
-\`\`\`
+~~~
 
 Build a debug APK:
 
-\`\`\`sh
+~~~sh
 ./gradlew assembleDebug
-\`\`\`
+~~~
 
 Run instrumented tests on a connected Android device or emulator:
 
-\`\`\`sh
+~~~sh
 ./gradlew connectedDebugAndroidTest
-\`\`\`
+~~~
 
 JVM unit tests run on the host. Instrumented tests require an Android device or emulator and exercise Android Keystore and SharedPreferences.
 
@@ -89,12 +89,12 @@ JVM unit tests run on the host. Instrumented tests require an Android device or 
 
 ## Release and signing
 
-Builds and releases are deliberately local; this repository does not use GitHub Actions. Create a release keystore outside the repository and configure signing locally. Verify release artifacts before distribution. Never commit keystores, passwords, signing properties, or real TOTP secrets.
+SecureAuth deliberately does **not** use GitHub Actions for routine builds. This keeps GitHub Actions usage at zero unless automation becomes necessary later. Create a release keystore outside the repository and configure signing locally. Verify release artifacts before distribution. Never commit keystores, passwords, signing properties, or real TOTP secrets.
 
 ## Contributing
 
-See CONTRIBUTING.md for build, test, commit, and DCO requirements. Sign off every commit.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for build, test, commit, and DCO requirements. Sign off every commit.
 
 ## License
 
-MIT.
+[MIT](LICENSE).
