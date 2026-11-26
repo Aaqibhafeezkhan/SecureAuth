@@ -31,17 +31,18 @@ public final class SecureStorage {
         KeyGenerator generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE);
         generator.init(new KeyGenParameterSpec.Builder(KEY_ALIAS,
                 KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+                .setKeySize(256)
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .setRandomizedEncryptionRequired(true)
                 .build());
         return generator.generateKey();
     }
 
     public static void save(Context context, String account, String secret) throws Exception {
-        byte[] iv = new byte[12];
-        new java.security.SecureRandom().nextBytes(iv);
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, getKey(), new GCMParameterSpec(128, iv));
+        cipher.init(Cipher.ENCRYPT_MODE, getKey());
+        byte[] iv = cipher.getIV();
         byte[] encrypted = cipher.doFinal(secret.getBytes(StandardCharsets.UTF_8));
         boolean saved = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putString(SECRET, Base64.encodeToString(encrypted, Base64.NO_WRAP))

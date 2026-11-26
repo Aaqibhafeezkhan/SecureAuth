@@ -1,56 +1,101 @@
 # SecureAuth
 
-A small Android TOTP authenticator that generates codes locally.
+SecureAuth is an offline Android authenticator that generates six-digit TOTP codes from a manually entered Base32 secret.
+
+## What it is
+
+SecureAuth stores one TOTP account locally and generates codes on the device. The secret is encrypted with AES-GCM using an Android Keystore key before it is saved in app-private SharedPreferences. It has no backend, network access, synchronization, or password-based user account system.
 
 ## Features
 
-- Standard 6-digit HMAC-SHA1 TOTP with 30-second steps.
-- TOTP secret encrypted at rest with an AES-GCM key held by Android Keystore.
-- Account restore after app restart without placing the secret back into the UI.
-- Explicit account deletion.
-- Local RFC 6238-compatible unit tests.
-- No backend and no GitHub Actions dependency.
+- HMAC-SHA1 TOTP with six digits and 30-second time steps.
+- Manual Base32 secret entry and optional account label.
+- AES-GCM encrypted secret storage with an Android Keystore AES key.
+- Account restore after app restart without repopulating the secret input.
+- Explicit local account deletion that clears preferences and deletes the Keystore key.
+- Backup disabled and secure-window protection enabled in non-debuggable builds.
+- Unit coverage for RFC 4226 and RFC 6238 vectors, Base32 normalization, and account-label validation.
+- Instrumented coverage for encrypted storage lifecycle and GCM tamper detection.
 
-## Build locally
+## Security design
 
-Use the included Gradle wrapper:
+| Asset or threat | Control | Implementation | Verification |
+| --- | --- | --- | --- |
+| TOTP secret at rest | AES-GCM with a 256-bit Android Keystore key and a fresh provider-generated IV | `SecureStorage` | `SecureStorageLifecycleTest`; manual review |
+| Ciphertext modification | GCM authentication tag checked during decryption | `SecureStorage.loadSecret` | `SecureStorageLifecycleTest.tamperedCiphertextFailsAuthentication` |
+| Secret exposed through backup | Android backup disabled | `AndroidManifest.xml` | Manual review |
+| Codes captured in screenshots or recents | `FLAG_SECURE` in non-debuggable builds | `MainActivity` | Manual review |
+| Unnecessary background refresh | Refresh loop runs only while the activity is started | `MainActivity.onStart/onStop` | Manual review |
+| Invalid TOTP input | Base32 validation, minimum decoded secret length, and null handling | `TotpGenerator` | `TotpGeneratorTest`, `TotpSecretValidationTest` |
+| Unsafe account labels | Optional label, 64-character trimmed limit, ISO control-character rejection | `CredentialValidator` | `CredentialValidatorTest` |
+| Credential deletion | Synchronous preference clearing and Keystore key deletion | `SecureStorage.clear` | `SecureStorageLifecycleTest` |
 
-```text
-./gradlew test
-./gradlew assembleDebug
-./gradlew assembleRelease
+## How it works
+
+```mermaid
+flowchart TD
+    A[Enter optional account label and Base32 secret] --> B[Validate label and secret]
+    B --> C[Generate TOTP locally]
+    C --> D[Encrypt secret with Android Keystore AES-GCM]
+    D --> E[Store ciphertext, IV, and label in app-private SharedPreferences]
+    E --> F[Restore and decrypt on app start]
+    F --> G[Generate and refresh six-digit code locally]
+    G --> H[Delete account]
+    H --> I[Clear preferences and delete Keystore key]
 ```
 
-On Windows PowerShell use `./gradlew.bat` instead.
+## Build and test
 
-The debug APK is produced under `app/build/outputs/apk/debug/` and the release APK under `app/build/outputs/apk/release/`.
+The checked-in build uses JDK 8 through 14, Gradle 6.5 through the included wrapper, Android Gradle Plugin 4.1.1, Android SDK platform 30, and Build Tools 30.0.3. Install the Android SDK and accept its licenses before building.
 
-## Release / deployment
+Run JVM unit tests:
 
-SecureAuth deliberately does **not** use GitHub Actions for routine builds. This keeps GitHub Actions usage at zero unless automation becomes necessary later.
+```sh
+./gradlew testDebugUnitTest
+```
 
-For a distributable build:
+Build a debug APK:
 
-1. Create a release keystore outside the repository.
-2. Configure Gradle signing locally or through your private build environment.
-3. Run `./gradlew assembleRelease` for an APK or `./gradlew bundleRelease` for an AAB.
-4. Verify the artifact before publishing.
-5. Create a GitHub Release manually and attach the signed APK/AAB, or upload the AAB to Google Play Console.
+```sh
+./gradlew assembleDebug
+```
 
-Never commit a keystore, passwords, signing properties, or real TOTP secrets.
+Run instrumented tests on a connected Android device or emulator:
 
-## Credential security
+```sh
+./gradlew connectedDebugAndroidTest
+```
 
-TOTP secrets are validated before they are persisted. Account labels reject line-break control characters. SecureAuth does not hash passwords because the current application has no password account store; Login/Register remain UI shells rather than a server-side authentication system.
+JVM unit tests run on the host. Instrumented tests require an Android device or emulator and exercise Android Keystore and SharedPreferences.
 
-## Local credential lifecycle
+## Limitations
 
-Deleting the saved TOTP account synchronously clears its encrypted preferences and removes the app-owned Android Keystore key used to encrypt it. If either cleanup step fails, the app reports that deletion could not be fully completed instead of showing a success message. This is local credential invalidation, not server-side session or token revocation.
+- One active account is supported.
+- Secrets must be entered manually as Base32; there is no `otpauth://` import or QR scanner.
+- The implementation supports SHA-1, six digits, and a 30-second period only.
+- There is no biometric or device-credential gate.
+- There is no backup, export, or recovery mechanism.
+- The TOTP secret exists in process memory while the app is active.
+- Code validity depends on the device clock.
+- Debuggable builds allow screenshots; non-debuggable builds set `FLAG_SECURE`.
+- The Android application ID changed to `io.github.aaqibhafeezkhan.secureauth`. Version 1.2.0 installs as a separate app; accounts saved by the earlier `com.example.authenticatorapp` application are not migrated.
 
-## Security notes
+## Roadmap
 
-SecureAuth is still a personal/open-source project and should be reviewed before being trusted with critical accounts. Android Keystore protects the stored secret on supported devices, but the app does not provide cloud backup or recovery of TOTP secrets. Keep account recovery codes separately.
+- Add a biometric or device-credential gate before revealing codes.
+- Support multiple accounts with independently managed encrypted secrets.
+- Add `otpauth://` import and QR scanning.
+- Support SHA-256 and SHA-512, eight-digit codes, and configurable periods.
+- Add encrypted export and import with storage format versioning and authenticated metadata.
 
-## Test secret
+## Release and signing
 
-For a quick test, enter `JBSWY3DPEHPK3PXP`. Do not use this example secret for a real account.
+Create a release keystore outside the repository and configure signing locally or in a private build environment. Build release artifacts locally and verify them before distribution. Never commit keystores, passwords, signing properties, or real TOTP secrets.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for build, test, commit, and DCO requirements. Sign off every commit.
+
+## License
+
+[MIT](LICENSE).

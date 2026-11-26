@@ -5,16 +5,19 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-public class CredentialValidationTest {
-    @Test public void acceptsStandardTotpSecret() {
+public class TotpSecretValidationTest {
+    @Test
+    public void acceptsStandardTotpSecret() {
         assertTrue(TotpGenerator.isValidSecret("JBSWY3DPEHPK3PXP"));
     }
 
-    @Test public void rejectsMalformedTotpSecret() {
+    @Test
+    public void rejectsMalformedTotpSecret() {
         assertFalse(TotpGenerator.isValidSecret("not-base32"));
     }
 
-    @Test public void rejectsUndersizedTotpSecret() {
+    @Test
+    public void rejectsUndersizedTotpSecret() {
         assertFalse(TotpGenerator.isValidSecret("JBSWY3"));
     }
 }
