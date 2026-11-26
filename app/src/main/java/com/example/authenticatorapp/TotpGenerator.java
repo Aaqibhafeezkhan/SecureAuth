@@ -2,8 +2,6 @@ package com.example.authenticatorapp;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -11,6 +9,9 @@ public final class TotpGenerator {
     private TotpGenerator() {}
 
     public static String generate(String secret, long timestampMillis) throws Exception {
+        if (secret == null) {
+            throw new IllegalArgumentException("Secret is required");
+        }
         byte[] key = decodeBase32(secret);
         long counter = timestampMillis / 1000L / 30L;
         byte[] data = ByteBuffer.allocate(8).putLong(counter).array();
@@ -26,6 +27,9 @@ public final class TotpGenerator {
     }
 
     public static boolean isValidSecret(String value) {
+        if (value == null) {
+            return false;
+        }
         try {
             return decodeBase32(value).length >= 10;
         } catch (IllegalArgumentException exception) {
